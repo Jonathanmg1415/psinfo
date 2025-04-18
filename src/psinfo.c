@@ -60,23 +60,45 @@ void print_process_info(ProcessInfo *p, FILE *out)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3)
+    if (argc < 2)
     {
-        fprintf(stderr, "Uso: %s [-l|-r] <pid1> [pid2] [...]\n", argv[0]);
+        fprintf(stderr, "Uso: %s [-l|-r] [-o archivo] <pid1> [pid2] [...]\n", argv[0]);
         return 1;
     }
 
-    int is_list = strcmp(argv[1], "-l") == 0;
-    int is_report = strcmp(argv[1], "-r") == 0;
-    int start = 2;
+    int is_list = 0, is_report = 0;
+    char *output_file = NULL;
 
-    if (!is_list && !is_report)
+    // Parseo de opciones
+    int i = 1;
+    for (; i < argc; i++)
     {
-        start = 1;
-        is_list = 1; // por defecto modo lista simple
+        if (strcmp(argv[i], "-l") == 0)
+            is_list = 1;
+        else if (strcmp(argv[i], "-r") == 0)
+            is_report = 1;
+        else if (strcmp(argv[i], "-o") == 0)
+        {
+            if (i + 1 < argc)
+            {
+                output_file = argv[++i];
+            }
+            else
+            {
+                fprintf(stderr, "Falta el nombre del archivo después de -o\n");
+                return 1;
+            }
+        }
+        else
+        {
+            break; // primer PID encontrado
+        }
     }
 
-    int count = argc - start;
+    if (!is_list && !is_report)
+        is_list = 1; // por defecto
+
+    int count = argc - i;
     if (count <= 0)
     {
         fprintf(stderr, "Debe proporcionar al menos un PID.\n");
@@ -84,26 +106,43 @@ int main(int argc, char *argv[])
     }
 
     ProcessInfo processes[count];
-
-    for (int i = 0; i < count; i++)
+    for (int j = 0; j < count; j++)
     {
-        pid_t pid = atoi(argv[start + i]);
-        processes[i].pid = pid;
+        pid_t pid = atoi(argv[i + j]);
+        processes[j].pid = pid;
 
-        if (read_process_info(pid, &processes[i]) != 0)
+        if (read_process_info(pid, &processes[j]) != 0)
         {
             fprintf(stderr, "No se pudo leer info del PID %d\n", pid);
         }
     }
 
-    if (is_report)
+    // Salida a archivo personalizado con -o
+    if (output_file)
     {
-        // Generar nombre del archivo
+        FILE *out = fopen(output_file, "w");
+        if (!out)
+        {
+            perror("Error al abrir archivo de salida");
+            return 1;
+        }
+
+        for (int j = 0; j < count; j++)
+        {
+            print_process_info(&processes[j], out);
+        }
+
+        fclose(out);
+        printf("Archivo de salida generado: %s\n", output_file);
+    }
+    // Salida automática en archivo (modo -r)
+    else if (is_report)
+    {
         char filename[256] = "psinfo-report";
-        for (int i = 0; i < count; i++)
+        for (int j = 0; j < count; j++)
         {
             char pid_str[16];
-            sprintf(pid_str, "-%d", processes[i].pid);
+            sprintf(pid_str, "-%d", processes[j].pid);
             strcat(filename, pid_str);
         }
         strcat(filename, ".info");
@@ -115,21 +154,21 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        for (int i = 0; i < count; i++)
+        for (int j = 0; j < count; j++)
         {
-            print_process_info(&processes[i], out); // escribir en archivo
+            print_process_info(&processes[j], out);
         }
 
         fclose(out);
         printf("Archivo de salida generado: %s\n", filename);
     }
+    // Salida por pantalla
     else
     {
-        // Mostrar en pantalla
-        printf("-- Información recolectada!!! --\n");
-        for (int i = 0; i < count; i++)
+        printf("-- Información recolectada --\n");
+        for (int j = 0; j < count; j++)
         {
-            print_process_info(&processes[i], stdout);
+            print_process_info(&processes[j], stdout);
         }
     }
 
