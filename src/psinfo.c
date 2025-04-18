@@ -46,14 +46,14 @@ int read_process_info(int pid, ProcessInfo *pinfo)
 
 void print_process_info(ProcessInfo *p, FILE *out)
 {
-    fprintf(out, "Pid: %d\n", p->pid);
-    fprintf(out, "Nombre del proceso: %s\n", p->name);
+    fprintf(out, "PID: %d\n", p->pid);
+    fprintf(out, "Nombre: %s\n", p->name);
     fprintf(out, "Estado: %s\n", p->state);
-    fprintf(out, "Tamaño total de la imagen de memoria: %d KB\n", p->vm_size);
-    fprintf(out, "Tamaño de la memoria TEXT: %d KB\n", p->vm_exe);
-    fprintf(out, "Tamaño de la memoria DATA: %d KB\n", p->vm_data);
-    fprintf(out, "Tamaño de la memoria STACK: %d KB\n", p->vm_stk);
-    fprintf(out, "Número de cambios de contexto (voluntarios - no voluntarios): %d - %d\n\n",
+    fprintf(out, "Tamaño total de la imagen de memoria (VmSize): %d KB\n", p->vm_size);
+    fprintf(out, "Tamaño de la memoria de código (VmExe): %d KB\n", p->vm_exe);
+    fprintf(out, "Tamaño de la memoria de datos (VmData): %d KB\n", p->vm_data);
+    fprintf(out, "Tamaño de la pila (VmStk): %d KB\n", p->vm_stk);
+    fprintf(out, "Cambios de contexto: voluntarios = %d, no voluntarios = %d\n\n",
             p->voluntary_ctxt_switches,
             p->nonvoluntary_ctxt_switches);
 }
