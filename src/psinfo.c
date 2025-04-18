@@ -44,60 +44,94 @@ int read_process_info(int pid, ProcessInfo *pinfo)
     return 0;
 }
 
-void print_process_info(const ProcessInfo *pinfo)
+void print_process_info(ProcessInfo *p, FILE *out)
 {
-    printf("Pid: %d\n", pinfo->pid);
-    printf("Nombre del proceso: %s\n", pinfo->name);
-    printf("Estado: %s\n", pinfo->state);
-    printf("Tamaño total de la imagen de memoria: %d KB\n", pinfo->vm_size);
-    printf("Tamaño de la memoria TEXT: %d KB\n", pinfo->vm_exe);
-    printf("Tamaño de la memoria DATA: %d KB\n", pinfo->vm_data);
-    printf("Tamaño de la memoria STACK: %d KB\n", pinfo->vm_stk);
-    printf("Número de cambios de contexto (voluntarios - no voluntarios): %d - %d\n",
-           pinfo->voluntary_ctxt_switches, pinfo->nonvoluntary_ctxt_switches);
-    printf("\n");
+    fprintf(out, "PID: %d\n", p->pid);
+    fprintf(out, "Nombre: %s\n", p->name);
+    fprintf(out, "Estado: %s\n", p->state);
+    fprintf(out, "Tamaño total de la imagen de memoria (VmSize): %d KB\n", p->vm_size);
+    fprintf(out, "Tamaño de la memoria de código (VmExe): %d KB\n", p->vm_exe);
+    fprintf(out, "Tamaño de la memoria de datos (VmData): %d KB\n", p->vm_data);
+    fprintf(out, "Tamaño de la pila (VmStk): %d KB\n", p->vm_stk);
+    fprintf(out, "Cambios de contexto: voluntarios = %d, no voluntarios = %d\n\n",
+            p->voluntary_ctxt_switches,
+            p->nonvoluntary_ctxt_switches);
 }
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc < 3)
     {
-        fprintf(stderr, "Uso: %s [-l] <pid1> [pid2] [...]\n", argv[0]);
+        fprintf(stderr, "Uso: %s [-l|-r] <pid1> [pid2] [...]\n", argv[0]);
         return 1;
     }
 
     int is_list = strcmp(argv[1], "-l") == 0;
-    int start = is_list ? 2 : 1;
-    int count = argc - start;
+    int is_report = strcmp(argv[1], "-r") == 0;
+    int start = 2;
 
+    if (!is_list && !is_report)
+    {
+        start = 1;
+        is_list = 1; // por defecto modo lista simple
+    }
+
+    int count = argc - start;
     if (count <= 0)
     {
         fprintf(stderr, "Debe proporcionar al menos un PID.\n");
         return 1;
     }
 
-    ProcessInfo *infos = malloc(count * sizeof(ProcessInfo));
-    if (!infos)
-    {
-        perror("Error de memoria");
-        return 1;
-    }
+    ProcessInfo processes[count];
 
-    printf("-- Información recolectada!!!\n");
-
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < count; i++)
     {
-        int pid = atoi(argv[start + i]);
-        if (read_process_info(pid, &infos[i]) == 0)
+        pid_t pid = atoi(argv[start + i]);
+        processes[i].pid = pid;
+
+        if (read_process_info(pid, &processes[i]) != 0)
         {
-            print_process_info(&infos[i]);
-        }
-        else
-        {
-            fprintf(stderr, "No se pudo leer información del PID %d\n", pid);
+            fprintf(stderr, "No se pudo leer info del PID %d\n", pid);
         }
     }
 
-    free(infos);
+    if (is_report)
+    {
+        // Generar nombre del archivo
+        char filename[256] = "psinfo-report";
+        for (int i = 0; i < count; i++)
+        {
+            char pid_str[16];
+            sprintf(pid_str, "-%d", processes[i].pid);
+            strcat(filename, pid_str);
+        }
+        strcat(filename, ".info");
+
+        FILE *out = fopen(filename, "w");
+        if (!out)
+        {
+            perror("Error al crear el archivo de salida");
+            return 1;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            print_process_info(&processes[i], out); // escribir en archivo
+        }
+
+        fclose(out);
+        printf("Archivo de salida generado: %s\n", filename);
+    }
+    else
+    {
+        // Mostrar en pantalla
+        printf("-- Información recolectada!!! --\n");
+        for (int i = 0; i < count; i++)
+        {
+            print_process_info(&processes[i], stdout);
+        }
+    }
+
     return 0;
 }

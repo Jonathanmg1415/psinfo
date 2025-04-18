@@ -1,8 +1,9 @@
 #ifndef PSINFO_H
 #define PSINFO_H
 
-typedef struct
-{
+#include <stdio.h>
+
+typedef struct {
     int pid;
     char name[256];
     char state[32];
@@ -15,6 +16,6 @@ typedef struct
 } ProcessInfo;
 
 int read_process_info(int pid, ProcessInfo *pinfo);
-void print_process_info(const ProcessInfo *pinfo);
+void print_process_info(ProcessInfo *p, FILE *out);
 
 #endif
